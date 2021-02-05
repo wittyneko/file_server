@@ -29,7 +29,7 @@ function protocol(req) {
 const app = express()
 // 访问认证认证中间件
 app.use(cookieParser('secret'));
-const keyToken = md5(fs.readFileSync('key').toString())
+const keyToken = md5(fs.readFileSync('key').toString().split('\n')[0])
 app.use((req, res, next) => {
     // 任何路由信息都会执行这里面的语句
     console.log(`request ${req.method} ${req.url}`);
