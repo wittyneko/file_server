@@ -6,6 +6,9 @@ const serveIndex = require('serve-index')
 const multer = require('multer')
 const cookieParser = require('cookie-parser');
 
+if (!fs.existsSync('uploads')) {
+    fs.mkdirSync('uploads')
+}
 if (!fs.existsSync('oss')) {
     fs.mkdirSync('oss')
 }
