@@ -1,7 +1,8 @@
 {
-  "name": "hello",
+  "name": "file_service",
   "version": "1.0.0",
-  "description": "",
+  "description": "file service",
+  "repository": "src",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -12,7 +13,9 @@
   "author": "neko",
   "license": "ISC",
   "dependencies": {
+    "cookie-parser": "^1.4.5",
     "express": "^4.17.1",
-    "multer": "^1.4.2"
+    "multer": "^1.4.2",
+    "serve-index": "^1.9.1"
   }
 }

@@ -1,6 +1,5 @@
 <body>
     <div style="max-width:1200px;margin:0 auto;text-align: center;margin-top: 150px;">
-        <input type="text" id="key" class="key" name="key" />
         <input type="file" class="file" name="file" multiple="multiple" />
         <ul id='urlList'></ul>
     </div>
@@ -16,23 +15,20 @@
             // formData中的append方法 如果已有相同的键，则会追加成为一个数组  注意:这里需要使用formData.getAll()获取
             formData.append('upFile', files[i], files[i].name)
         }
-        var key = document.getElementById('key').value;
         console.log(formData.getAll('upFile'))
         // 将formdata发送到后台即可
         // 我用的 axios.post('url', formData)
         let xhr = new XMLHttpRequest()
         xhr.open('post', '/upload', true)
-        xhr.setRequestHeader('key', key)
         xhr.send(formData);
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
                 alert('success')
                 console.log(xhr.responseText)
-                let resObj = JSON.parse(xhr.responseText).message;
+                let resObj = JSON.parse(xhr.responseText).imgs;
                 let hostport = document.location.host; //ip:端口号
                 resObj && resObj.forEach(item => {
-                    document.getElementById('urlList').innerHTML += '<a href=http://' + hostport +
-                        item + '>' + hostport + item + '</a><br>';
+                    document.getElementById('urlList').innerHTML += `<a href=${item}>${item}</a><br>`;
                 })
             }
         }

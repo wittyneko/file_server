@@ -1,0 +1,27 @@
+<body>
+    <div style="max-width:1200px;margin:0 auto;text-align: center;margin-top: 150px;">
+        <input type="password" id="key" class="key" name="key" />
+        <input type="button" class="login" name="login" onclick="login()" value="login"/>
+        <ul id='urlList'></ul>
+    </div>
+</body>
+<script>
+    function login() {
+        // 上传文件 创建FormData
+        let formData = new FormData()
+        var key = document.getElementById('key').value;
+        console.log(`key ${key}`)
+        // 将formdata发送到后台即可
+        // 我用的 axios.post('url', formData)
+        let xhr = new XMLHttpRequest()
+        xhr.open('post', '/.osskey', true)
+        xhr.setRequestHeader('key', key)
+        xhr.send(formData);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState === 4 && xhr.status === 200) {
+                alert('success')
+                console.log(xhr.responseText)
+            }
+        }
+    }
+</script>

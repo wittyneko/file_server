@@ -1,25 +1,60 @@
-const express = require('express')
 const fs = require("fs");
 const path = require('path')
+const crypto = require('crypto');
+const express = require('express')
+const serveIndex = require('serve-index')
 const multer = require('multer')
+const cookieParser = require('cookie-parser');
 
-const keyToken = fs.readFileSync('key').toString()
+if (!fs.existsSync('oss')) {
+    fs.mkdirSync('oss')
+}
+if (!fs.existsSync('key')) {
+    fs.writeFileSync('key', crypto.randomBytes(16).toString('hex'))
+}
+
+function md5(data) {
+    let hash = crypto.createHash('md5');
+    return hash.update(data).digest('base64');
+}
+
+function protocol(req) {
+    var proxy = req.app.proxy;
+    if (req.socket.encrypted) return 'https';
+    if (!proxy) return 'http';
+    var proto = req.get('X-Forwarded-Proto') || 'http';
+    return proto.split(/\s*,\s*/)[0];
+}
+
 const app = express()
 // 访问认证认证中间件
+app.use(cookieParser('secret'));
+const keyToken = md5(fs.readFileSync('key').toString())
 app.use((req, res, next) => {
     // 任何路由信息都会执行这里面的语句
-    console.log('this is a api request ');
-    console.log(req);
-    console.log(res);
-    console.log(req.headers["key"] != keyToken);
-    if(req.url.startsWith('/upload') && req.headers["key"] != keyToken) {
-        res.send(401, "Auth Error!")
-        return;
+    console.log(`request ${req.method} ${req.url}`);
+    console.log(`request auth ${req.cookies["key"] == keyToken}`);
+    if (req.url.startsWith('/uploads')) {
+        switch (req.cookies['key']) {
+            case keyToken:
+                break
+            default: {
+                res.send(401, "Auth Error!")
+                return
+            }
+        }
     }
-    // 把它交给下一个中间件，中间件是按注册顺序序执行
+    // 交给下一个中间件处理，中间件是按注册顺序执行
     next();
-    
+
 });
+
+// 允许直接访问静态文件
+app.use('/oss', express.static('oss'));
+app.use('/uploads', express.static('uploads'));
+// 展示目录结构
+app.use('/oss', serveIndex('oss'));
+app.use('/uploads', serveIndex('uploads'));
 
 //上传中间件
 const multerObj = multer({
@@ -27,45 +62,61 @@ const multerObj = multer({
 })
 app.use(multerObj.any())
 
-// 允许直接访问静态文件
-app.use('/oss', express.static('oss'));
-
-app.get('/', (req, res, next) => {
+app.get('/.osslogin', (req, res, next) => {
     res.setHeader('Content-Type', 'text/html')
-    fs.statSync
+    res.sendFile(path.join(__dirname, 'login.html'))
+
+})
+
+app.post('/.osskey', (req, res, next) => {
+    res.cookie('key', md5(req.headers.key))
+    res.status(200).send('success')
+})
+
+
+app.get('/upload', (req, res, next) => {
+    res.setHeader('Content-Type', 'text/html')
     res.sendFile(path.join(__dirname, 'index.html'))
 })
 
 app.post('/upload', (req, res, next) => {
     console.log(req.files)
     var files = req.files
-    var resUrls = []; // 返给前端做回显 link 
-    // 多图：修改文件后缀
+    var imgUrls = [];
     files.forEach((item) => {
-        //以下代码得到文件后缀
-        var name = item.originalname;
-        var nameArray = name.split('\.');
-        var nameMime = [];
-        l = nameArray.pop();
-        nameMime.unshift(l);
-        while (nameArray.length != 0 && l != '.') {
-            l = nameArray.pop();
-            nameMime.unshift(l);
+        var originalname = item.originalname;
+        // var nameArray = originalname.split('\.');
+        // var mime = nameArray.pop();
+        var mimeIndex = originalname.lastIndexOf('\.')
+        var mime = mimeIndex != -1 ? originalname.substr(mimeIndex) : ""
+        var name = mimeIndex != -1 ? originalname.substr(0, mimeIndex) : originalname
+        var oldPath = `uploads/${item.filename}`
+
+        // 审核认证
+        if (req.cookies["key"] == keyToken) {
+            // 认证通过移动到公共区
+            var newPath = `oss/${item.filename}${mime}`
+            fs.rename(oldPath, newPath, (err) => {
+                if (err) {
+                    console.error(err)
+                }
+            });
+            //var proto = req.socket.encrypted ? 'https' : 'http';
+            var proto = protocol(req);
+            imgUrls.push(`${proto}://${req.headers.host}/${newPath}`)
+        } else {
+            var newPath = `uploads/${name}-${item.filename}${mime}`
+            fs.rename(oldPath, newPath, (err) => {
+                if (err) {
+                    console.error(err)
+                }
+            });
         }
-        //Mime是文件的后缀
-        var mime = nameMime.join('');
-        //重命名文件 加上文件后缀
-        // 这里的路径问题一定要注意：本瓜反复测试了很多才发现是“路径问题导致不能正常修改文件名”
-        fs.rename('./uploads/' + item.filename, './oss/' + item.filename + mime, (err) => {
-            if (err) {
-                console.log(err)
-            }
-        });
-        resUrls.push(`/oss/${item.filename + mime}`)
     });
-    res.send(200, {
-        'code': 1,
-        message: resUrls
-    })
+    if (req.cookies["key"] == keyToken) {
+        res.send(200, { 'code': 1, imgs: imgUrls })
+    } else {
+        res.send(200, { 'code': 0, 'message': " Wait audit" })
+    }
 })
 app.listen(3000)
