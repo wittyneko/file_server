@@ -1,6 +1,6 @@
 <body>
     <div style="max-width:1200px;margin:0 auto;text-align: center;margin-top: 150px;">
-        <input type="file" class="file" name="file" multiple="multiple" />
+        <input type="file" class="file" id="file" multiple="multiple" />
         <ul id='urlList'></ul>
     </div>
 </body>
@@ -23,12 +23,13 @@
         xhr.send(formData);
         xhr.onreadystatechange = function () {
             if (xhr.readyState === 4 && xhr.status === 200) {
+                document.getElementById('file').value = "";
                 alert('success')
                 console.log(xhr.responseText)
                 let resObj = JSON.parse(xhr.responseText).imgs;
                 let hostport = document.location.host; //ip:端口号
                 resObj && resObj.forEach(item => {
-                    document.getElementById('urlList').innerHTML += `<a href=${item}>${item}</a><br>`;
+                    document.getElementById('urlList').innerHTML += `<a href=${item} target='_blank'>${item}</a><br>`;
                 })
             }
         }
