@@ -20,7 +20,7 @@ function md5(data) {
 
 function protocol(req) {
     var proto = req.headers['x-forwarded-proto'];
-    if(proto == null) proto = req.socket.encrypted ? 'https': 'http'
+    if (proto == null) proto = req.socket.encrypted ? 'https' : 'http'
     return proto;
 }
 
@@ -31,9 +31,9 @@ const keyToken = md5(fs.readFileSync('key').toString().split('\n')[0])
 app.use((req, res, next) => {
     // 任何路由信息都会执行这里面的语句
     console.log(`request ${req.method} ${req.url}`);
-    console.log(`request auth ${req.cookies["key"] == keyToken}`);
+    console.log(`request auth ${req.cookies['osskey'] == keyToken}`);
     if (req.url.startsWith('/uploads')) {
-        switch (req.cookies['key']) {
+        switch (req.cookies['osskey']) {
             case keyToken:
                 break
             default: {
@@ -67,8 +67,13 @@ app.get('/.osslogin', (req, res, next) => {
 })
 
 app.post('/.osskey', (req, res, next) => {
-    res.cookie('key', md5(req.headers.key))
-    res.status(200).send('success')
+    var osskey = md5(req.headers.key)
+    if (osskey == keyToken) {
+        res.cookie('osskey', osskey)
+        res.status(200).send('success')
+    } else {
+        res.status(200).send('fail')
+    }
 })
 
 
@@ -91,7 +96,7 @@ app.post('/upload', (req, res, next) => {
         var oldPath = `uploads/${item.filename}`
 
         // 审核认证
-        if (req.cookies["key"] == keyToken) {
+        if (req.cookies['osskey'] == keyToken) {
             // 认证通过移动到公共区
             var newPath = `oss/${item.filename}${mime}`
             fs.rename(oldPath, newPath, (err) => {
@@ -111,7 +116,7 @@ app.post('/upload', (req, res, next) => {
             });
         }
     });
-    if (req.cookies["key"] == keyToken) {
+    if (req.cookies['osskey'] == keyToken) {
         res.send(200, { 'code': 1, imgs: imgUrls })
     } else {
         res.send(200, { 'code': 0, 'message': " Wait audit" })
