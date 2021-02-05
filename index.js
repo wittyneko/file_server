@@ -19,11 +19,9 @@ function md5(data) {
 }
 
 function protocol(req) {
-    var proxy = req.app.proxy;
-    if (req.socket.encrypted) return 'https';
-    if (!proxy) return 'http';
-    var proto = req.get('X-Forwarded-Proto') || 'http';
-    return proto.split(/\s*,\s*/)[0];
+    var proto = req.headers['x-forwarded-proto'];
+    if(proto == null) proto = req.socket.encrypted ? 'https': 'http'
+    return proto;
 }
 
 const app = express()
