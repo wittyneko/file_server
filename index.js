@@ -6,14 +6,23 @@ const serveIndex = require('serve-index')
 const multer = require('multer')
 const cookieParser = require('cookie-parser');
 
-if (!fs.existsSync('uploads')) {
-    fs.mkdirSync('uploads')
-}
-if (!fs.existsSync('oss')) {
-    fs.mkdirSync('oss')
-}
-if (!fs.existsSync('key')) {
-    fs.writeFileSync('key', crypto.randomBytes(16).toString('hex'))
+var config = config()
+var key = config[0]
+var port = config[1]
+
+function config() {
+    if (!fs.existsSync('uploads')) {
+        fs.mkdirSync('uploads')
+    }
+    if (!fs.existsSync('oss')) {
+        fs.mkdirSync('oss')
+    }
+    if (!fs.existsSync('config')) {
+        var key = crypto.randomBytes(16).toString('hex')
+        var port = '3000'
+        fs.writeFileSync('config', `${key}\n${port}`)
+    }
+    return fs.readFileSync('config').toString().split('\n')
 }
 
 function md5(data) {
@@ -30,7 +39,7 @@ function protocol(req) {
 const app = express()
 // 访问认证认证中间件
 app.use(cookieParser('secret'));
-const keyToken = md5(fs.readFileSync('key').toString().split('\n')[0])
+const keyToken = md5(key)
 app.use((req, res, next) => {
     // 任何路由信息都会执行这里面的语句
     console.log(`request ${req.method} ${req.url}`);
@@ -128,4 +137,4 @@ app.post('/upload', (req, res, next) => {
         res.send(200, { 'code': 0, 'message': " Wait audit" })
     }
 })
-app.listen(3000)
+app.listen(port)
