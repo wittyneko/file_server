@@ -109,9 +109,9 @@ app.post('/upload', (req, res, next) => {
             });
             //var proto = req.socket.encrypted ? 'https' : 'http';
             var proto = protocol(req);
-            var osshost = req.headers.osshost || `${proto}://${req.headers.host}`
+            var osshost = req.headers.osshost || `${req.headers.host}`
             var osspath = req.headers.osspath || ''
-            var ossurl = req.headers.ossurl || path.join(osshost, osspath)
+            var ossurl = req.headers.ossurl || `${proto}://${path.join(osshost, osspath)}`
             imgUrls.push(`${ossurl}/${newPath}`)
         } else {
             var newPath = `uploads/${name}-${item.filename}${mime}`
