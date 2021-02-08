@@ -9,20 +9,26 @@ const cookieParser = require('cookie-parser');
 var config = config()
 var key = config[0]
 var port = config[1]
+var assets = config[2]
+var oss = path.join(assets, 'oss')
+var uploads = path.join(assets, 'uploads')
+mkdirs(oss)
+mkdirs(uploads)
 
 function config() {
-    if (!fs.existsSync('uploads')) {
-        fs.mkdirSync('uploads')
-    }
-    if (!fs.existsSync('oss')) {
-        fs.mkdirSync('oss')
-    }
     if (!fs.existsSync('config')) {
         var key = crypto.randomBytes(16).toString('hex')
         var port = '3000'
-        fs.writeFileSync('config', `${key}\n${port}`)
+        var assets = 'assets'
+        fs.writeFileSync('config', `${key}\n${port}\n${assets}`)
     }
     return fs.readFileSync('config').toString().split('\n')
+}
+
+function mkdirs(path) {
+    if (!fs.existsSync(path)) {
+        fs.mkdirSync(path, { recursive: true })
+    }
 }
 
 function md5(data) {
@@ -60,15 +66,15 @@ app.use((req, res, next) => {
 });
 
 // 允许直接访问静态文件
-app.use('/oss', express.static('oss'));
-app.use('/uploads', express.static('uploads'));
+app.use('/oss', express.static(oss));
+app.use('/uploads', express.static(assets));
 // 展示目录结构
-app.use('/oss', serveIndex('oss'));
-app.use('/uploads', serveIndex('uploads'));
+app.use('/oss', serveIndex(oss));
+app.use('/uploads', serveIndex(assets));
 
 //上传中间件
 const multerObj = multer({
-    dest: 'uploads/'
+    dest: uploads
 })
 app.use(multerObj.any())
 
@@ -105,12 +111,12 @@ app.post('/upload', (req, res, next) => {
         var mimeIndex = originalname.lastIndexOf('\.')
         var mime = mimeIndex != -1 ? originalname.substr(mimeIndex) : ""
         var name = mimeIndex != -1 ? originalname.substr(0, mimeIndex) : originalname
-        var oldPath = `uploads/${item.filename}`
+        var oldPath = `${uploads}/${item.filename}`
 
         // 审核认证
         if (req.cookies['osskey'] == keyToken) {
             // 认证通过移动到公共区
-            var newPath = `oss/${item.filename}${mime}`
+            var newPath = `${oss}/${item.filename}${mime}`
             fs.rename(oldPath, newPath, (err) => {
                 if (err) {
                     console.error(err)
@@ -121,9 +127,9 @@ app.post('/upload', (req, res, next) => {
             var osshost = req.headers.osshost || `${req.headers.host}`
             var osspath = req.headers.osspath || ''
             var ossurl = req.headers.ossurl || `${proto}://${path.join(osshost, osspath)}`
-            imgUrls.push(`${ossurl}/${newPath}`)
+            imgUrls.push(`${ossurl}/${newPath.substr(assets.length + 1)}`)
         } else {
-            var newPath = `uploads/${name}-${item.filename}${mime}`
+            var newPath = `${uploads}/${name}-${item.filename}${mime}`
             fs.rename(oldPath, newPath, (err) => {
                 if (err) {
                     console.error(err)
